@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-SRC = ROOT / "src" / "gai_mcp"
+SRC = ROOT / "src" / "gai_play"
 SKILLS = ROOT / "skills"
 STATIC = SRC / "web" / "static"
 CONFIG = ROOT / "config.yaml"
@@ -59,7 +59,7 @@ def build_web():
         sys.executable, "-m", "PyInstaller",
         "--name=gai-web",
         "--console",
-        f"--add-data={STATIC};gai_mcp/web/static",
+        f"--add-data={STATIC};gai_play/web/static",
         "--hidden-import=uvicorn",
         "--hidden-import=uvicorn.logging",
         "--hidden-import=uvicorn.protocols.http",
