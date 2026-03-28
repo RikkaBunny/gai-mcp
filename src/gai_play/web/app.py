@@ -26,7 +26,7 @@ import sys
 
 if getattr(sys, 'frozen', False):
     # PyInstaller 打包后
-    STATIC_DIR = Path(sys._MEIPASS) / "gai_mcp" / "web" / "static"
+    STATIC_DIR = Path(sys._MEIPASS) / "gai_play" / "web" / "static"
 else:
     STATIC_DIR = Path(__file__).parent / "static"
 

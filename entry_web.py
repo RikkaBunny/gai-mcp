@@ -10,5 +10,5 @@ if sys.platform == "win32":
 if getattr(sys, 'frozen', False):
     os.chdir(os.path.dirname(sys.executable))
 
-from gai_mcp.web.run import main
+from gai_play.web.run import main
 main()

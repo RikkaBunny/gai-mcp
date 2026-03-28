@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>GAI MCP - Mind Map v2</title>
+<title>GAI Play - Mind Map v2</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;padding:30px 40px}
@@ -50,8 +50,8 @@ h1{font-size:24px;font-weight:800;background:linear-gradient(135deg,#7dd3fc,#a78
 </head>
 <body>
 
-<h1>GAI MCP v2</h1>
-<p class="sub-title">AI 自动游玩游戏的 MCP 工具 — 项目思维导图（含 Cradle 架构升级）</p>
+<h1>GAI Play v2</h1>
+<p class="sub-title">AI 自动游玩游戏 — 项目思维导图（含 Cradle 架构升级）</p>
 
 <div class="legend">
   <div class="legend-item"><div class="dot" style="background:#f472b6"></div>核心中枢</div>
@@ -142,7 +142,7 @@ h1{font-size:24px;font-weight:800;background:linear-gradient(135deg,#7dd3fc,#a78
       <div class="desc">
         <strong>记忆系统</strong><br>
         短期: 最近 N 帧滑动窗口，检测操作循环。<br>
-        长期: ~/.gai_mcp/experiences/ 持久化 JSON，关键词检索，跨会话积累经验。
+        长期: ~/.gai_play/experiences/ 持久化 JSON，关键词检索，跨会话积累经验。
         <br><span class="tag tag-purple">ShortTermMemory</span><span class="tag tag-purple">LongTermMemory</span><span class="tag tag-purple">循环检测</span>
       </div>
     </div>
@@ -155,7 +155,7 @@ h1{font-size:24px;font-weight:800;background:linear-gradient(135deg,#7dd3fc,#a78
       <div class="desc">
         <strong>动态技能生成 &amp; 检索</strong><br>
         合并静态 .md 与 AI 动态生成的技能。按场景检索最相关技能，跟踪成功/失败率，自动淘汰差技能。
-        <br><span class="tag tag-purple">~/.gai_mcp/dynamic_skills/</span><span class="tag tag-purple">自动淘汰</span><span class="tag tag-purple">成功率追踪</span>
+        <br><span class="tag tag-purple">~/.gai_play/dynamic_skills/</span><span class="tag tag-purple">自动淘汰</span><span class="tag tag-purple">成功率追踪</span>
       </div>
     </div>
     <div class="card new-card">
@@ -200,25 +200,18 @@ h1{font-size:24px;font-weight:800;background:linear-gradient(135deg,#7dd3fc,#a78
 <!-- Entry Points (unchanged) -->
 <!-- ============================================================ -->
 <div class="section s-entry">
-  <h2><div class="dot"></div>三种入口</h2>
+  <h2><div class="dot"></div>两种入口</h2>
   <div class="row">
-    <div class="card">
-      <div class="name" style="color:#7dd3fc">MCP Server</div>
-      <div class="file">server.py &#8594; gai-mcp</div>
-      <div class="desc">FastMCP 入口，暴露 8 个工具供 Claude Desktop 调用。
-        <br><span class="tag">list_windows</span><span class="tag">start_game</span><span class="tag">stop_game</span><span class="tag">pause</span><span class="tag">resume</span><span class="tag">screenshot</span><span class="tag">execute_action</span><span class="tag">set_strategy</span>
-      </div>
-    </div>
     <div class="card">
       <div class="name" style="color:#7dd3fc">CLI 命令行</div>
       <div class="file">cli.py &#8594; gai-play</div>
-      <div class="desc">独立命令行工具，argparse 解析参数。
-        <br><span class="tag">list</span><span class="tag">play</span><span class="tag">play-game</span><span class="tag">screenshot</span>
+      <div class="desc">交互式菜单 + 子命令模式。无参数启动进入菜单，选个数字就能玩。
+        <br><span class="tag">交互式菜单</span><span class="tag">list</span><span class="tag">play</span><span class="tag">play-game</span><span class="tag">screenshot</span><span class="tag">web</span>
       </div>
     </div>
     <div class="card">
       <div class="name" style="color:#7dd3fc">Web 控制台</div>
-      <div class="file">web/ &#8594; gai-mcp-web</div>
+      <div class="file">web/ &#8594; gai-web</div>
       <div class="desc">Starlette + uvicorn :9966。REST API + 静态前端。GameRunner 单例，已集成全部高级功能。</div>
     </div>
   </div>
@@ -288,13 +281,13 @@ h1{font-size:24px;font-weight:800;background:linear-gradient(135deg,#7dd3fc,#a78
     <div class="card">
       <div class="name" style="color:#fbbf24">ConfigManager</div>
       <div class="file">config_manager.py</div>
-      <div class="desc">~/.gai_mcp/ 配置读写。<span style="color:#c4b5fd">新增:</span> advanced 配置段默认值（12项全部默认启用）。</div>
+      <div class="desc">~/.gai_play/ 配置读写。<span style="color:#c4b5fd">新增:</span> advanced 配置段默认值（12项全部默认启用）。</div>
     </div>
     <div class="card">
       <div class="name" style="color:#fbbf24">持久化存储</div>
-      <div class="file">~/.gai_mcp/</div>
+      <div class="file">~/.gai_play/</div>
       <div class="desc">
-        <span class="tag">user_config.json</span><span class="tag">gai_mcp.log</span><span class="tag tag-purple">experiences/*.json</span><span class="tag tag-purple">dynamic_skills/*.json</span>
+        <span class="tag">user_config.json</span><span class="tag">gai_play.log</span><span class="tag tag-purple">experiences/*.json</span><span class="tag tag-purple">dynamic_skills/*.json</span>
       </div>
     </div>
   </div>

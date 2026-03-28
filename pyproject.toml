@@ -28,8 +28,8 @@ dependencies = [
 dev = ["pytest", "pytest-asyncio"]
 
 [project.scripts]
-gai-play = "gai_mcp.cli:main"
-gai-web = "gai_mcp.web.run:main"
+gai-play = "gai_play.cli:main"
+gai-web = "gai_play.web.run:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/gai_mcp"]
+packages = ["src/gai_play"]
