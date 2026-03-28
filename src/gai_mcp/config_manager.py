@@ -118,9 +118,13 @@ def clear_log() -> None:
 
 
 def setup_file_logging() -> None:
-    """配置文件日志"""
+    """配置文件日志（自动轮转，最大 5MB，保留 3 个备份）"""
+    from logging.handlers import RotatingFileHandler
+
     ensure_config_dir()
-    file_handler = logging.FileHandler(LOG_PATH, encoding="utf-8")
+    file_handler = RotatingFileHandler(
+        LOG_PATH, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+    )
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(
         logging.Formatter("%(asctime)s [%(name)s] %(levelname)s: %(message)s")
