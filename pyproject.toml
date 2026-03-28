@@ -29,6 +29,7 @@ dev = ["pytest", "pytest-asyncio"]
 [project.scripts]
 gai-mcp = "gai_mcp.server:main"
 gai-mcp-web = "gai_mcp.web.run:main"
+gai-play = "gai_mcp.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gai_mcp"]
