@@ -168,8 +168,8 @@ class GameRunner:
             engine.set_skills(skills)
             logger.info(f"已加载 {len(skills)} 个技能: {[s['name'] for s in skills]}")
 
-        # 输入控制器
-        input_ctrl = InputController(use_virtual_desktop=False)
+        # 输入控制器 (传入 capturer 以获取截图坐标元信息)
+        input_ctrl = InputController(use_virtual_desktop=False, capturer=capturer)
         input_ctrl.set_target_window(hwnd)
 
         capture_interval = game.get("capture_interval", 2.0)

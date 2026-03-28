@@ -181,9 +181,11 @@ class GameController:
             )
             logger.info("高级功能: 分层决策已启用")
 
-        # 输入控制器
+        # 输入控制器 (传入 capturer 以获取截图坐标元信息)
         input_ctrl = InputController(
-            vd_manager=self.vd_manager, use_virtual_desktop=use_virtual_desktop
+            vd_manager=self.vd_manager,
+            use_virtual_desktop=use_virtual_desktop,
+            capturer=self.capturer,
         )
         input_ctrl.set_target_window(hwnd)
 
