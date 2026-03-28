@@ -11,9 +11,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # 用户配置文件路径
-CONFIG_DIR = Path(os.environ.get("GAI_MCP_CONFIG_DIR", Path.home() / ".gai_mcp"))
+CONFIG_DIR = Path(os.environ.get("GAI_PLAY_CONFIG_DIR",
+                                  os.environ.get("GAI_MCP_CONFIG_DIR",  # 向后兼容
+                                                 Path.home() / ".gai_play")))
 USER_CONFIG_PATH = CONFIG_DIR / "user_config.json"
-LOG_PATH = CONFIG_DIR / "gai_mcp.log"
+LOG_PATH = CONFIG_DIR / "gai_play.log"
 
 # 默认配置
 DEFAULT_CONFIG: dict[str, Any] = {
@@ -40,6 +42,21 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "virtual_desktop": {
         "enabled": True,
         "auto_cleanup": True,
+    },
+    # 高级功能配置
+    "advanced": {
+        "task_inference_enabled": True,
+        "reflection_enabled": True,
+        "reflection_diff_threshold": 0.005,
+        "reflection_max_retries": 2,
+        "memory_enabled": True,
+        "short_term_capacity": 10,
+        "long_term_enabled": True,
+        "dynamic_skills_enabled": True,
+        "max_dynamic_skills": 50,
+        "layered_decision_enabled": True,
+        "local_cv_change_threshold": 0.01,
+        "static_frame_patience": 3,
     },
     "games": {
         "三色绘恋": {
