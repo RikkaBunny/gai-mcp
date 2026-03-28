@@ -68,7 +68,9 @@ class InputController:
         self._window_rect = win32gui.GetWindowRect(hwnd)
 
     def _to_screen_coords(self, norm_x: float, norm_y: float) -> tuple[int, int]:
-        """将归一化坐标 (0.0-1.0) 转换为屏幕绝对坐标"""
+        """将归一化坐标 (0.0-1.0) 转换为屏幕绝对坐标（基于客户区）"""
+        import ctypes
+        import ctypes.wintypes
         import win32gui
 
         if self._hwnd is None:
@@ -78,11 +80,17 @@ class InputController:
         norm_x = max(0.0, min(1.0, norm_x))
         norm_y = max(0.0, min(1.0, norm_y))
 
-        rect = win32gui.GetWindowRect(self._hwnd)
-        self._window_rect = rect
+        # 获取客户区尺寸和屏幕位置
+        client_rect = win32gui.GetClientRect(self._hwnd)
+        client_w = client_rect[2]
+        client_h = client_rect[3]
 
-        screen_x = int(rect[0] + norm_x * (rect[2] - rect[0]))
-        screen_y = int(rect[1] + norm_y * (rect[3] - rect[1]))
+        # 客户区左上角在屏幕上的位置
+        pt = ctypes.wintypes.POINT(0, 0)
+        ctypes.windll.user32.ClientToScreen(self._hwnd, ctypes.byref(pt))
+
+        screen_x = int(pt.x + norm_x * client_w)
+        screen_y = int(pt.y + norm_y * client_h)
         return screen_x, screen_y
 
     async def execute(self, action: GameAction) -> bool:

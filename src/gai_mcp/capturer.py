@@ -89,29 +89,29 @@ class WindowCapturer:
         import win32ui
 
         try:
-            # 获取窗口尺寸
-            rect = win32gui.GetWindowRect(hwnd)
-            width = rect[2] - rect[0]
-            height = rect[3] - rect[1]
+            # 获取客户区尺寸（不含标题栏和边框）
+            client_rect = win32gui.GetClientRect(hwnd)
+            width = client_rect[2]
+            height = client_rect[3]
 
             if width <= 0 or height <= 0:
                 logger.warning(f"窗口尺寸无效: {width}x{height}")
                 return None
 
-            # 创建设备上下文
-            hwnd_dc = win32gui.GetWindowDC(hwnd)
+            # 使用客户区 DC 截图（不含标题栏和边框）
+            hwnd_dc = ctypes.windll.user32.GetDC(hwnd)
             mfc_dc = win32ui.CreateDCFromHandle(hwnd_dc)
             save_dc = mfc_dc.CreateCompatibleDC()
 
-            # 创建位图
             bitmap = win32ui.CreateBitmap()
             bitmap.CreateCompatibleBitmap(mfc_dc, width, height)
             save_dc.SelectObject(bitmap)
 
-            # 使用 PrintWindow 截图 (支持后台窗口)
+            # PrintWindow + PW_CLIENTONLY 只截客户区
+            PW_CLIENTONLY = 0x00000001
             PW_RENDERFULLCONTENT = 0x00000002
             ctypes.windll.user32.PrintWindow(
-                hwnd, save_dc.GetSafeHdc(), PW_RENDERFULLCONTENT
+                hwnd, save_dc.GetSafeHdc(), PW_CLIENTONLY | PW_RENDERFULLCONTENT
             )
 
             # 转换为 PIL Image
@@ -131,7 +131,7 @@ class WindowCapturer:
                 # 确保 Win32 资源始终被清理
                 save_dc.DeleteDC()
                 mfc_dc.DeleteDC()
-                win32gui.ReleaseDC(hwnd, hwnd_dc)
+                ctypes.windll.user32.ReleaseDC(hwnd, hwnd_dc)
                 win32gui.DeleteObject(bitmap.GetHandle())
 
             # 裁剪 ROI
