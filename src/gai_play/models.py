@@ -63,6 +63,8 @@ class AIDecision(BaseModel):
     new_experience: Optional[str] = None
     # Feature 4: 动态技能 - AI 可建议生成的技能
     new_skill: Optional[dict] = None
+    # Cradle 借鉴: AI 提取的画面可见文字，下一轮作为上下文注入
+    visible_text: Optional[list[str]] = None
 
 
 class SessionStatus(str, enum.Enum):

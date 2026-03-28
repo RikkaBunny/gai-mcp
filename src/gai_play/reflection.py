@@ -13,7 +13,9 @@ from typing import Optional
 import numpy as np
 from PIL import Image
 
-from .models import AIDecision, ActionType, GameAction
+import json
+
+from .models import ActionType, GameAction
 from .models_advanced import ReflectionResult
 
 logger = logging.getLogger(__name__)
@@ -204,6 +206,70 @@ class ReflectionEngine:
             return "拖拽可能未生效，尝试: 1) 调整起止坐标 2) 分解为多次点击"
         else:
             return "操作未生效，请尝试其他策略"
+
+    async def reflect_with_ai(
+        self,
+        engine,
+        before_b64: str,
+        after_b64: str,
+        actions: list[GameAction],
+    ) -> ReflectionResult:
+        """Cradle 借鉴: 用 AI 对比操作前后截图判断成败
+
+        Args:
+            engine: AIEngine 实例
+            before_b64: 操作前截图的 base64
+            after_b64: 操作后截图的 base64
+            actions: 已执行的操作列表
+
+        Returns:
+            ReflectionResult
+        """
+        action_names = [a.action.value for a in actions]
+        prompt = (
+            f"对比这两张截图（第一张=操作前，第二张=操作后），判断操作是否成功。\n"
+            f"已执行操作: {action_names}\n"
+            '只返回 JSON: {"succeeded": true/false, "change_desc": "画面变化描述", "reason": "判断理由"}'
+        )
+        try:
+            raw = await engine.analyze_pair(before_b64, after_b64, prompt)
+            # 提取 JSON
+            text = raw.strip()
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0].strip()
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0].strip()
+            start = text.find("{")
+            end = text.rfind("}") + 1
+            if start >= 0 and end > start:
+                data = json.loads(text[start:end])
+            else:
+                raise ValueError("未找到 JSON")
+
+            succeeded = bool(data.get("succeeded", True))
+            change_desc = str(data.get("change_desc", ""))
+            reason = str(data.get("reason", ""))
+
+            if not succeeded:
+                self.consecutive_failures += 1
+            else:
+                self.consecutive_failures = 0
+
+            result = ReflectionResult(
+                action_succeeded=succeeded,
+                pixel_diff_ratio=0.0,
+                expected_change="AI 双图对比",
+                actual_change=change_desc,
+                adjustment=reason if not succeeded else "",
+                should_retry=not succeeded and self.consecutive_failures <= self.max_retries,
+            )
+            logger.info(f"AI 反思结果: {'成功' if succeeded else '失败'} — {reason}")
+        except Exception as e:
+            logger.warning(f"AI 反思失败，降级为像素 diff: {e}")
+            result = ReflectionResult(action_succeeded=True, pixel_diff_ratio=0.0)
+
+        self._last_reflection = result
+        return result
 
     def reset(self) -> None:
         """重置状态"""

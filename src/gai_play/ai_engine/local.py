@@ -6,7 +6,7 @@ import logging
 
 import httpx
 
-from .base import AIEngine, SYSTEM_PROMPT
+from .base import AIEngine
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class LocalEngine(AIEngine):
     async def _call_api(
         self, screenshot_base64: str, user_prompt: str
     ) -> str:
-        prompt = f"{SYSTEM_PROMPT}\n\n{user_prompt}"
+        prompt = f"{self.get_system_prompt()}\n\n{user_prompt}"
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(

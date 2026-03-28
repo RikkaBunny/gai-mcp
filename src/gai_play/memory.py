@@ -162,26 +162,38 @@ class LongTermMemory:
         self.save()
         logger.info(f"新增经验: {entry.lesson[:50]}...")
 
-    def search(self, situation: str, limit: int = 3) -> list[ExperienceEntry]:
-        """根据当前场景搜索相关经验
+    @staticmethod
+    def _char_ngram_vector(text: str, n: int = 2) -> dict[str, int]:
+        """构建字符 n-gram 频率向量（无需额外依赖）"""
+        vec: dict[str, int] = {}
+        text = text.lower()
+        for i in range(len(text) - n + 1):
+            ng = text[i:i + n]
+            vec[ng] = vec.get(ng, 0) + 1
+        return vec
 
-        v1 版本使用关键词匹配，后续可升级为 embedding 检索。
-        """
+    @staticmethod
+    def _cosine(vec_a: dict[str, int], vec_b: dict[str, int]) -> float:
+        """计算两个稀疏向量的余弦相似度"""
+        dot = sum(vec_a.get(k, 0) * v for k, v in vec_b.items())
+        na = sum(v * v for v in vec_a.values()) ** 0.5
+        nb = sum(v * v for v in vec_b.values()) ** 0.5
+        return dot / (na * nb) if na and nb else 0.0
+
+    def search(self, situation: str, limit: int = 3) -> list[ExperienceEntry]:
+        """根据当前场景搜索相关经验（字符 2-gram 余弦相似度）"""
         if not self._experiences or not situation:
             return []
 
-        # 提取关键词
-        keywords = set(situation.lower().replace("，", " ").replace("。", " ").split())
-        keywords.discard("")
-
+        query_vec = self._char_ngram_vector(situation)
         scored = []
         for exp in self._experiences:
-            # 简单的关键词匹配评分
-            exp_text = (exp.situation + " " + exp.lesson).lower()
-            matches = sum(1 for kw in keywords if kw in exp_text)
-            if matches > 0:
-                # 引用次数作为加权
-                score = matches + exp.times_referenced * 0.1
+            exp_text = exp.situation + " " + exp.lesson
+            exp_vec = self._char_ngram_vector(exp_text)
+            sim = self._cosine(query_vec, exp_vec)
+            if sim > 0:
+                # 引用次数轻微加权
+                score = sim + exp.times_referenced * 0.01
                 scored.append((score, exp))
 
         scored.sort(key=lambda x: x[0], reverse=True)

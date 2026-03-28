@@ -257,6 +257,42 @@ class WindowCapturer:
         img.save(buffer, format="JPEG", quality=self.quality)
         return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
+    def add_grid_overlay(self, img: Image.Image, grid: int = 3) -> Image.Image:
+        """叠加坐标参考网格，辅助 AI 定位
+
+        在截图上画 grid×grid 的参考线和归一化坐标标签，
+        让 AI 更准确地感知目标位置。
+
+        Args:
+            img: 原始截图
+            grid: 网格行列数，默认 3（即 3×3=9 个区域）
+        """
+        from PIL import ImageDraw
+
+        marked = img.copy()
+        draw = ImageDraw.Draw(marked)
+        w, h = img.size
+
+        # 画网格线（黄色半透明）
+        for i in range(1, grid):
+            draw.line([(w * i // grid, 0), (w * i // grid, h)], fill=(255, 255, 0), width=1)
+            draw.line([(0, h * i // grid), (w, h * i // grid)], fill=(255, 255, 0), width=1)
+
+        # 在每个格子中心标注归一化坐标
+        for row in range(grid):
+            for col in range(grid):
+                nx = round((col + 0.5) / grid, 1)
+                ny = round((row + 0.5) / grid, 1)
+                px = int((col + 0.5) / grid * w)
+                py = int((row + 0.5) / grid * h)
+                label = f"({nx},{ny})"
+                # 黑色描边 + 黄色文字，确保在深浅背景上都可见
+                for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    draw.text((px - 18 + dx, py - 7 + dy), label, fill=(0, 0, 0))
+                draw.text((px - 18, py - 7), label, fill=(255, 255, 0))
+
+        return marked
+
     def draw_click_marker(
         self,
         img: Image.Image,

@@ -56,6 +56,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "layered_decision_enabled": True,
         "local_cv_change_threshold": 0.01,
         "static_frame_patience": 3,
+        "grid_overlay_enabled": True,
+        "ai_reflection_enabled": False,
     },
     "games": {
         "三色绘恋": {

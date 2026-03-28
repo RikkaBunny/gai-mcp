@@ -59,16 +59,18 @@ SYSTEM_PROMPT = """\
     "name": "技能名称",
     "trigger_condition": "什么场景触发",
     "steps": "具体步骤"
-  }
+  },
+  "visible_text": ["画面中的文字1", "文字2"]
 }
 ```
 
 注意:
 - 只返回 JSON，不要包含其他文字
-- current_task, new_experience, new_skill 是可选字段，只在有必要时返回
+- current_task, new_experience, new_skill, visible_text 是可选字段，只在有必要时返回
 - current_task: 简短描述你当前的任务阶段，如 "对话中"、"战斗中"、"探索地图"、"选择菜单"
 - new_experience: 当你发现了重要的游戏机制或技巧时记录下来
 - new_skill: 当你总结出可复用的操作策略时生成技能
+- visible_text: 列出截图中所有可读的文字（按钮文本、对话内容、菜单项等）
 """
 
 # 高级功能的额外系统提示词
@@ -101,6 +103,8 @@ class AIEngine(ABC):
         self._memory_context: str = ""
         self._reflection_context: str = ""
         self._experience_context: str = ""
+        # Cradle 借鉴: 上一帧 AI 提取的可见文字
+        self._visible_text_context: str = ""
 
     def set_strategy(self, prompt: str) -> None:
         """设置游戏策略目标"""
@@ -134,6 +138,10 @@ class AIEngine(ABC):
     def set_experience_context(self, context: str) -> None:
         """注入长期经验上下文 (Feature 3)"""
         self._experience_context = context
+
+    def set_visible_text_context(self, texts: list[str]) -> None:
+        """注入上一帧 AI 提取的可见文字 (Cradle 借鉴)"""
+        self._visible_text_context = str(texts) if texts else ""
 
     def get_system_prompt(self) -> str:
         """获取完整的系统提示词"""
@@ -175,6 +183,10 @@ class AIEngine(ABC):
         if self._experience_context:
             parts.append(f"## 历史经验\n{self._experience_context}")
 
+        # Cradle 借鉴: 上一帧可见文字
+        if self._visible_text_context:
+            parts.append(f"## 上一帧可见文字\n{self._visible_text_context}")
+
         # 基础上下文
         if game_context:
             parts.append(f"## 上下文\n{game_context}")
@@ -188,6 +200,15 @@ class AIEngine(ABC):
     ) -> str:
         """调用 AI API，返回原始文本响应"""
         ...
+
+    async def analyze_pair(
+        self, before_b64: str, after_b64: str, prompt: str
+    ) -> str:
+        """Cradle 借鉴: 发送操作前后两张截图给 AI，返回原始文本
+
+        默认实现降级为只发后图；子类可覆盖以支持真正的双图对比。
+        """
+        return await self._call_api(after_b64, prompt)
 
     async def analyze(
         self, screenshot_base64: str, game_context: str = ""

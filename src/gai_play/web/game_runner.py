@@ -220,6 +220,7 @@ class GameRunner:
         self._task = asyncio.create_task(
             self._loop(
                 capturer, engine, input_ctrl, hwnd, capture_interval,
+                adv_cfg=adv_cfg,
                 task_mgr=task_mgr, refl_engine=refl_engine,
                 stm=stm, ltm=ltm, skill_mgr=skill_mgr, local_ana=local_ana,
             )
@@ -335,6 +336,8 @@ class GameRunner:
         input_ctrl: InputController,
         hwnd: int,
         interval: float,
+        # 高级功能配置
+        adv_cfg: Optional[AdvancedConfig] = None,
         # 高级功能组件
         task_mgr: Optional[TaskManager] = None,
         refl_engine: Optional[ReflectionEngine] = None,
@@ -380,6 +383,9 @@ class GameRunner:
                 rec.screenshot_b64 = self._make_thumbnail(img)
                 logger.info(f"[Round {self.round_count}] 截图完成: {img.width}x{img.height}")
 
+                # Cradle 借鉴: 叠加坐标参考网格
+                img_for_ai = capturer.add_grid_overlay(img) if (adv_cfg and adv_cfg.grid_overlay_enabled) else img
+
                 # 2. 分层决策检查 (Feature 5)
                 if local_ana:
                     local_result = local_ana.analyze(img)
@@ -424,7 +430,7 @@ class GameRunner:
                         engine.set_experience_context(ltm.get_relevant_context(last_analysis))
 
                 # 4. AI 分析
-                screenshot_b64 = capturer.image_to_base64(img)
+                screenshot_b64 = capturer.image_to_base64(img_for_ai)
                 context = ""
                 for prev in reversed(list(self.decisions)):
                     if prev.analysis:
@@ -466,8 +472,14 @@ class GameRunner:
                 if task_mgr:
                     task_mgr.update_from_decision(decision)
 
+                # Cradle 借鉴: 将 AI 提取的可见文字注入下一轮上下文
+                if decision.visible_text:
+                    engine.set_visible_text_context(decision.visible_text)
+                    logger.debug(f"[Round {self.round_count}] visible_text: {decision.visible_text[:3]}")
+
                 # 6. 执行操作
                 before_img = img
+                before_b64_raw = capturer.image_to_base64(img)  # 原始截图（无网格），供反思用
                 executed = 0
                 if decision.actions and decision.confidence > 0.1:
                     executed = await input_ctrl.execute_actions(
@@ -482,13 +494,20 @@ class GameRunner:
                 else:
                     logger.info(f"[Round {self.round_count}] 置信度过低或无操作，跳过执行")
 
-                # 7. 自我反思 (Feature 2)
+                # 7. 自我反思 (Feature 2 + Cradle AI 双图反思)
                 action_succeeded = None
                 if refl_engine and executed > 0:
                     await asyncio.sleep(0.3)
                     after_img = capturer.capture(hwnd)
                     if after_img:
-                        reflection = refl_engine.reflect(before_img, after_img, decision.actions)
+                        if adv_cfg and adv_cfg.ai_reflection_enabled:
+                            after_b64_raw = capturer.image_to_base64(after_img)
+                            reflection = await refl_engine.reflect_with_ai(
+                                engine, before_b64_raw, after_b64_raw, decision.actions
+                            )
+                            logger.info(f"[Round {self.round_count}] AI 反思: {'成功' if reflection.action_succeeded else '失败'}")
+                        else:
+                            reflection = refl_engine.reflect(before_img, after_img, decision.actions)
                         action_succeeded = reflection.action_succeeded
                         if not reflection.action_succeeded:
                             logger.warning(f"[Round {self.round_count}] 反思: 操作可能失败")

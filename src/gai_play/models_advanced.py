@@ -144,3 +144,8 @@ class AdvancedConfig(BaseModel):
     layered_decision_enabled: bool = False
     local_cv_change_threshold: float = 0.01  # 变化低于此值走本地决策
     static_frame_patience: int = 3  # 连续静态帧数超过此值才调 LLM
+
+    # Cradle 借鉴: 截图坐标参考网格
+    grid_overlay_enabled: bool = True
+    # Cradle 借鉴: AI 双图反思（操作前后对比，额外消耗一次 API）
+    ai_reflection_enabled: bool = False
