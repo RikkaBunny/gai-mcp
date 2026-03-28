@@ -1,4 +1,4 @@
-"""核心业务逻辑 - MCP Server 和独立 CLI 共用"""
+"""核心业务逻辑 - CLI 和 Web 控制台共用"""
 
 from __future__ import annotations
 

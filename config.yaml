@@ -1,4 +1,4 @@
-# GAI MCP 默认配置
+# GAI Play 默认配置
 
 # AI 模型配置
 ai:
@@ -61,11 +61,11 @@ advanced:
   # 短期记忆: 最近 N 帧的上下文滑动窗口
   memory_enabled: true
   short_term_capacity: 10
-  # 长期记忆: 跨会话持久化经验库 (~/.gai_mcp/experiences/)
+  # 长期记忆: 跨会话持久化经验库 (~/.gai_play/experiences/)
   long_term_enabled: true
 
   # --- Feature 4: 动态技能生成 ---
-  # AI 在游玩中自动生成可复用技能 (~/.gai_mcp/dynamic_skills/)
+  # AI 在游玩中自动生成可复用技能 (~/.gai_play/dynamic_skills/)
   dynamic_skills_enabled: true
   max_dynamic_skills: 50
 

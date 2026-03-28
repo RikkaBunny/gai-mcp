@@ -11,9 +11,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # 用户配置文件路径
-CONFIG_DIR = Path(os.environ.get("GAI_MCP_CONFIG_DIR", Path.home() / ".gai_mcp"))
+CONFIG_DIR = Path(os.environ.get("GAI_PLAY_CONFIG_DIR",
+                                  os.environ.get("GAI_MCP_CONFIG_DIR",  # 向后兼容
+                                                 Path.home() / ".gai_play")))
 USER_CONFIG_PATH = CONFIG_DIR / "user_config.json"
-LOG_PATH = CONFIG_DIR / "gai_mcp.log"
+LOG_PATH = CONFIG_DIR / "gai_play.log"
 
 # 默认配置
 DEFAULT_CONFIG: dict[str, Any] = {

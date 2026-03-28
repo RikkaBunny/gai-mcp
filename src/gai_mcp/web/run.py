@@ -32,7 +32,7 @@ def main(port: int = 9966, open_ui: bool = True) -> None:
     if open_ui:
         threading.Thread(target=open_browser, args=(port,), daemon=True).start()
 
-    print(f"\n  GAI MCP 配置面板已启动: http://localhost:{port}\n")
+    print(f"\n  GAI Play 控制面板已启动: http://localhost:{port}\n")
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
 
 

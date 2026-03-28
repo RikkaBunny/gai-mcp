@@ -1,4 +1,4 @@
-"""PyInstaller 入口 - Web 配置后台"""
+"""PyInstaller 入口 - Web 控制台"""
 import sys
 import os
 

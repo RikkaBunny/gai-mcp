@@ -36,7 +36,7 @@ COMMON_ARGS = [
 
 
 def build_cli():
-    """打包 gai-play.exe (独立命令行工具)"""
+    """打包 gai-play.exe (命令行工具)"""
     print("=" * 50)
     print("打包 gai-play.exe ...")
     print("=" * 50)
@@ -51,13 +51,13 @@ def build_cli():
 
 
 def build_web():
-    """打包 gai-mcp-web.exe (Web 配置后台)"""
+    """打包 gai-web.exe (Web 控制台)"""
     print("=" * 50)
-    print("打包 gai-mcp-web.exe ...")
+    print("打包 gai-web.exe ...")
     print("=" * 50)
     cmd = [
         sys.executable, "-m", "PyInstaller",
-        "--name=gai-mcp-web",
+        "--name=gai-web",
         "--console",
         f"--add-data={STATIC};gai_mcp/web/static",
         "--hidden-import=uvicorn",
@@ -85,5 +85,5 @@ if __name__ == "__main__":
     print("\n" + "=" * 50)
     print("打包完成！输出目录: dist/")
     print("  dist/gai-play/gai-play.exe")
-    print("  dist/gai-mcp-web/gai-mcp-web.exe")
+    print("  dist/gai-web/gai-web.exe")
     print("=" * 50)
