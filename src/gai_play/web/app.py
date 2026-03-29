@@ -196,6 +196,18 @@ async def api_game_decisions(request: Request) -> JSONResponse:
     return JSONResponse(runner.get_decisions(limit))
 
 
+async def api_game_decision_detail(request: Request) -> JSONResponse:
+    """获取单条决策完整详情（含全尺寸截图和调用链路）"""
+    try:
+        round_id = int(request.path_params["round_id"])
+    except (ValueError, KeyError):
+        return JSONResponse({"error": "无效的 round_id"}, status_code=400)
+    detail = runner.get_decision_detail(round_id)
+    if detail is None:
+        return JSONResponse({"error": f"未找到 Round {round_id}"}, status_code=404)
+    return JSONResponse(detail)
+
+
 def create_app() -> Starlette:
     """创建 Web 应用"""
     routes = [
@@ -216,6 +228,7 @@ def create_app() -> Starlette:
         Route("/api/play/resume", api_game_resume, methods=["POST"]),
         Route("/api/play/status", api_game_status, methods=["GET"]),
         Route("/api/play/decisions", api_game_decisions, methods=["GET"]),
+        Route("/api/play/decisions/{round_id:int}", api_game_decision_detail, methods=["GET"]),
         Mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static"),
     ]
     return Starlette(routes=routes)

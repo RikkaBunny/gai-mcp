@@ -47,8 +47,17 @@ class DecisionRecord:
         self.elapsed: float = 0.0
         self.error: str = ""
         self.skipped: str = ""  # 跳过原因
+        # --- 详情链路字段 ---
+        self.full_screenshot_b64: str = ""  # 全尺寸截图
+        self.current_task: str = ""
+        self.visible_text: list[str] = []
+        self.new_experience: str = ""
+        self.new_skill_name: str = ""
+        self.reflection_result: str = ""
+        self.memory_context: str = ""
+        self.error_context: str = ""
 
-    def to_dict(self) -> dict:
+    def to_dict(self, include_full_screenshot: bool = False) -> dict:
         d: dict[str, Any] = {
             "round": self.round_id,
             "time": self.timestamp,
@@ -64,6 +73,26 @@ class DecisionRecord:
             d["error"] = self.error
         if self.skipped:
             d["skipped"] = self.skipped
+        # 详情字段（始终包含，前端按需展示）
+        detail: dict[str, Any] = {}
+        if self.current_task:
+            detail["current_task"] = self.current_task
+        if self.visible_text:
+            detail["visible_text"] = self.visible_text
+        if self.new_experience:
+            detail["new_experience"] = self.new_experience
+        if self.new_skill_name:
+            detail["new_skill_name"] = self.new_skill_name
+        if self.reflection_result:
+            detail["reflection_result"] = self.reflection_result
+        if self.memory_context:
+            detail["memory_context"] = self.memory_context
+        if self.error_context:
+            detail["error_context"] = self.error_context
+        if include_full_screenshot and self.full_screenshot_b64:
+            detail["full_screenshot"] = self.full_screenshot_b64
+        if detail:
+            d["detail"] = detail
         return d
 
 
@@ -105,7 +134,14 @@ class GameRunner:
 
     def get_decisions(self, limit: int = 20) -> list[dict]:
         items = list(self.decisions)[-limit:]
-        return [d.to_dict() for d in items]
+        return [d.to_dict(include_full_screenshot=False) for d in items]
+
+    def get_decision_detail(self, round_id: int) -> dict | None:
+        """按 round_id 查找单条决策完整详情（含全尺寸截图）"""
+        for d in self.decisions:
+            if d.round_id == round_id:
+                return d.to_dict(include_full_screenshot=True)
+        return None
 
     async def start(self, game_name: str) -> dict:
         """启动游戏"""
@@ -431,6 +467,7 @@ class GameRunner:
                 self._consecutive_capture_failures = 0
 
                 rec.screenshot_b64 = self._make_thumbnail(img)
+                rec.full_screenshot_b64 = capturer.image_to_base64(img)
                 logger.info(f"[Round {self.round_count}] 截图完成: {img.width}x{img.height}")
 
                 # Cradle 借鉴: 叠加坐标参考网格
@@ -461,15 +498,24 @@ class GameRunner:
                         continue
 
                 # 3. 注入高级上下文
+                _memory_parts = []
                 if task_mgr:
-                    engine.set_task_context(task_mgr.get_context_prompt())
+                    task_ctx = task_mgr.get_context_prompt()
+                    engine.set_task_context(task_ctx)
+                    if task_ctx:
+                        _memory_parts.append(f"[任务] {task_ctx}")
                 if refl_engine:
-                    engine.set_reflection_context(refl_engine.get_reflection_context())
+                    refl_ctx = refl_engine.get_reflection_context()
+                    engine.set_reflection_context(refl_ctx)
+                    if refl_ctx:
+                        _memory_parts.append(f"[反思] {refl_ctx}")
                 if stm:
                     ctx = stm.get_context_prompt()
                     if stm.detect_action_loop():
                         ctx += "\n⚠️ 检测到操作循环！请尝试完全不同的策略。"
                     engine.set_memory_context(ctx)
+                    if ctx:
+                        _memory_parts.append(f"[短期记忆] {ctx}")
                 if ltm and self.decisions:
                     last_analysis = ""
                     for prev in reversed(list(self.decisions)):
@@ -477,7 +523,11 @@ class GameRunner:
                             last_analysis = prev.analysis
                             break
                     if last_analysis:
-                        engine.set_experience_context(ltm.get_relevant_context(last_analysis))
+                        exp_ctx = ltm.get_relevant_context(last_analysis)
+                        engine.set_experience_context(exp_ctx)
+                        if exp_ctx:
+                            _memory_parts.append(f"[长期经验] {exp_ctx}")
+                rec.memory_context = "\n".join(_memory_parts)
 
                 # 4. AI 分析
                 screenshot_b64 = capturer.image_to_base64(img_for_ai)
@@ -511,7 +561,10 @@ class GameRunner:
                 logger.info(f"[Round {self.round_count}] 分析结果: {decision.analysis}")
                 logger.info(f"[Round {self.round_count}] 置信度: {decision.confidence:.0%}")
                 if decision.current_task:
+                    rec.current_task = decision.current_task
                     logger.info(f"[Round {self.round_count}] 当前任务: {decision.current_task}")
+                if decision.visible_text:
+                    rec.visible_text = decision.visible_text if isinstance(decision.visible_text, list) else []
                 for i, a in enumerate(decision.actions):
                     logger.info(
                         f"[Round {self.round_count}] 操作 {i+1}: "
@@ -559,6 +612,13 @@ class GameRunner:
                         else:
                             reflection = refl_engine.reflect(before_img, after_img, decision.actions)
                         action_succeeded = reflection.action_succeeded
+                        rec.reflection_result = (
+                            f"{'成功' if reflection.action_succeeded else '失败'}"
+                            f" (diff={reflection.pixel_diff_ratio:.4f})"
+                            f" — {reflection.actual_change}" if reflection.actual_change else
+                            f"{'成功' if reflection.action_succeeded else '失败'}"
+                            f" (diff={reflection.pixel_diff_ratio:.4f})"
+                        )
                         if not reflection.action_succeeded:
                             logger.warning(f"[Round {self.round_count}] 反思: 操作可能失败")
                     else:
@@ -577,6 +637,7 @@ class GameRunner:
 
                 if ltm and decision.new_experience:
                     exp_text = decision.new_experience if isinstance(decision.new_experience, str) else str(decision.new_experience)
+                    rec.new_experience = exp_text
                     ltm.add_experience(ExperienceEntry(
                         game_id=ltm.game_id,
                         situation=decision.analysis[:100],
@@ -591,6 +652,7 @@ class GameRunner:
                         try:
                             new_skill = skill_mgr.add_skill(decision.new_skill)
                             if new_skill:
+                                rec.new_skill_name = new_skill.name
                                 logger.info(f"[Round {self.round_count}] AI 生成新技能: {new_skill.name}")
                                 engine.set_skills(skill_mgr.get_all_skills())
                         except Exception as e:
@@ -614,13 +676,15 @@ class GameRunner:
                 rec.round_id = self.round_count
                 rec.timestamp = time.strftime("%H:%M:%S")
                 rec.error = str(e)
+                error_ctx = (
+                    f"⚠️ 连续 {self._consecutive_errors} 次操作出现异常: {e}\n"
+                    f"请换一个完全不同的策略来应对当前画面。"
+                )
+                rec.error_context = error_ctx
                 self.decisions.append(rec)
                 # 将连续错误信息注入 AI 反思上下文，让 AI 自行调整策略
                 if refl_engine:
-                    engine.set_reflection_context(
-                        f"⚠️ 连续 {self._consecutive_errors} 次操作出现异常: {e}\n"
-                        f"请换一个完全不同的策略来应对当前画面。"
-                    )
+                    engine.set_reflection_context(error_ctx)
                 self.status = "error"
                 await asyncio.sleep(interval * 2)
                 self.status = "running"

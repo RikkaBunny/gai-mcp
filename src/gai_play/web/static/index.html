@@ -237,6 +237,42 @@
         .feed-action-reason { color: var(--text-secondary); flex: 1; }
         .feed-skip { color: var(--text-tertiary); font-size: 13px; font-style: italic; }
         .feed-error { color: var(--red); font-size: 13px; }
+        .feed-item { cursor: pointer; }
+
+        /* ── Decision Detail Modal ── */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(30,25,28,0.7); backdrop-filter: blur(8px);
+            z-index: 1000; display: none; align-items: center; justify-content: center; padding: 24px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-lg);
+            max-width: 1100px; width: 100%; max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); padding: 28px;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+        .modal-close {
+            width: 32px; height: 32px; border: none; background: rgba(180,170,175,0.2);
+            border-radius: 50%; cursor: pointer; font-size: 16px; color: var(--text-secondary);
+            display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+        }
+        .modal-close:hover { background: rgba(196,138,138,0.3); color: var(--red); }
+        .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 800px) { .modal-grid { grid-template-columns: 1fr; } }
+        .modal-screenshot { border-radius: var(--radius-sm); border: 1px solid var(--border); width: 100%; }
+        .modal-timeline { display: flex; flex-direction: column; gap: 10px; }
+        .chain-step {
+            padding: 10px 14px; background: rgba(255,255,255,0.25);
+            border-radius: var(--radius-sm); border-left: 3px solid var(--accent);
+        }
+        .chain-step.step-error { border-left-color: var(--red); }
+        .chain-step.step-ok { border-left-color: var(--green); }
+        .chain-step.step-warn { border-left-color: #c4a04a; }
+        .chain-label { font-size: 11px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .chain-text { font-size: 13px; line-height: 1.6; color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; }
+        .chain-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+        .chain-tag { padding: 2px 8px; background: rgba(137,167,181,0.15); border-radius: 4px; font-size: 11px; color: var(--text-secondary); }
 
         /* ── Game List ── */
         .game-item {
@@ -371,6 +407,17 @@
                 <div id="decision-chain" class="feed">
                     <div class="feed-empty">选择游戏并点击「开始游玩」，AI 决策将在此实时展示</div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ════════════ 决策详情弹窗 ════════════ -->
+        <div class="modal-overlay" id="decision-modal" onclick="if(event.target===this)closeDecisionDetail()">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="modal-title" id="modal-title">决策详情</span>
+                    <button class="modal-close" onclick="closeDecisionDetail()">&times;</button>
+                </div>
+                <div id="modal-body"></div>
             </div>
         </div>
 
@@ -770,14 +817,14 @@
         function renderDecision(d, isLatest) {
             const confClass = d.confidence >= 0.8 ? 'conf-high' : d.confidence >= 0.5 ? 'conf-mid' : 'conf-low';
             if (d.skipped) {
-                return `<div class="feed-item skipped"><div class="feed-head">
+                return `<div class="feed-item skipped" onclick="showDecisionDetail(${d.round})"><div class="feed-head">
                     <span class="feed-badge round">R${d.round}</span>
                     <span class="feed-time">${d.time}</span>
                     <span class="feed-skip">${d.skipped}</span>
                 </div></div>`;
             }
             if (d.error && !d.analysis) {
-                return `<div class="feed-item error"><div class="feed-head">
+                return `<div class="feed-item error" onclick="showDecisionDetail(${d.round})"><div class="feed-head">
                     <span class="feed-badge round">R${d.round}</span>
                     <span class="feed-time">${d.time}</span>
                     <span class="feed-error">${d.error}</span>
@@ -793,7 +840,7 @@
             }).join('');
             const screenshotHtml = d.screenshot
                 ? `<div class="feed-thumb"><img src="data:image/jpeg;base64,${d.screenshot}" alt="截图"></div>` : '';
-            return `<div class="feed-item ${d.error ? 'error' : ''}">
+            return `<div class="feed-item ${d.error ? 'error' : ''}" onclick="showDecisionDetail(${d.round})">
                 <div class="feed-head">
                     <span class="feed-badge ${isLatest ? 'latest' : 'round'}">${isLatest ? '最新' : 'R' + d.round}</span>
                     <span class="feed-time">${d.time}</span>
@@ -1054,6 +1101,139 @@
                 const el = document.getElementById(id);
                 el.type = el.type === 'password' ? 'text' : 'password';
             });
+        }
+
+        // ══════════════════════════════
+        // ── 决策详情弹窗 ──
+        // ══════════════════════════════
+
+        async function showDecisionDetail(roundId) {
+            const modal = document.getElementById('decision-modal');
+            const body = document.getElementById('modal-body');
+            document.getElementById('modal-title').textContent = `Round ${roundId} 调用链路`;
+            body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-tertiary)">加载中...</div>';
+            modal.classList.add('active');
+
+            try {
+                const res = await fetch(`/api/play/decisions/${roundId}`);
+                if (!res.ok) { body.innerHTML = '<div class="chain-step step-error"><div class="chain-text">加载失败</div></div>'; return; }
+                const d = await res.json();
+                const det = d.detail || {};
+
+                const screenshotSrc = det.full_screenshot
+                    ? `data:image/jpeg;base64,${det.full_screenshot}`
+                    : (d.screenshot ? `data:image/jpeg;base64,${d.screenshot}` : '');
+
+                const confClass = d.confidence >= 0.8 ? 'conf-high' : d.confidence >= 0.5 ? 'conf-mid' : 'conf-low';
+
+                let steps = '';
+
+                // 1. 截图信息
+                steps += `<div class="chain-step">
+                    <div class="chain-label">1. 截图</div>
+                    <div class="chain-text">${d.time} | 置信度 <span class="${confClass}" style="padding:1px 6px;border-radius:4px">${(d.confidence*100).toFixed(0)}%</span> | AI 耗时 ${d.elapsed_s}s</div>
+                </div>`;
+
+                // 2. AI 分析
+                steps += `<div class="chain-step">
+                    <div class="chain-label">2. AI 分析</div>
+                    <div class="chain-text">${escHtml(d.analysis || '无')}</div>
+                </div>`;
+
+                // 3. 当前任务
+                if (det.current_task) {
+                    steps += `<div class="chain-step">
+                        <div class="chain-label">3. 当前任务</div>
+                        <div class="chain-text">${escHtml(det.current_task)}</div>
+                    </div>`;
+                }
+
+                // 4. 可见文字
+                if (det.visible_text && det.visible_text.length) {
+                    steps += `<div class="chain-step">
+                        <div class="chain-label">4. AI 提取的画面文字</div>
+                        <div class="chain-tags">${det.visible_text.map(t => `<span class="chain-tag">${escHtml(t)}</span>`).join('')}</div>
+                    </div>`;
+                }
+
+                // 5. 操作列表
+                if (d.actions && d.actions.length) {
+                    const actList = d.actions.map((a, i) => {
+                        const coords = (a.x != null && a.y != null) ? ` (${a.x.toFixed(3)}, ${a.y.toFixed(3)})` : '';
+                        const key = a.key ? ` key=${a.key}` : '';
+                        const text = a.text ? ` text="${a.text}"` : '';
+                        return `${i+1}. [${a.action}]${coords}${key}${text} — ${a.reason || ''}`;
+                    }).join('\n');
+                    steps += `<div class="chain-step">
+                        <div class="chain-label">5. 执行操作 (${d.executed}/${d.actions.length})</div>
+                        <div class="chain-text">${escHtml(actList)}</div>
+                    </div>`;
+                }
+
+                // 6. 反思结果
+                if (det.reflection_result) {
+                    const isOk = det.reflection_result.startsWith('成功');
+                    steps += `<div class="chain-step ${isOk ? 'step-ok' : 'step-warn'}">
+                        <div class="chain-label">6. 自我反思</div>
+                        <div class="chain-text">${escHtml(det.reflection_result)}</div>
+                    </div>`;
+                }
+
+                // 7. 记忆上下文
+                if (det.memory_context) {
+                    steps += `<div class="chain-step">
+                        <div class="chain-label">7. 注入的记忆上下文</div>
+                        <div class="chain-text">${escHtml(det.memory_context)}</div>
+                    </div>`;
+                }
+
+                // 8. 新经验
+                if (det.new_experience) {
+                    steps += `<div class="chain-step step-ok">
+                        <div class="chain-label">8. AI 新经验</div>
+                        <div class="chain-text">${escHtml(det.new_experience)}</div>
+                    </div>`;
+                }
+
+                // 9. 新技能
+                if (det.new_skill_name) {
+                    steps += `<div class="chain-step step-ok">
+                        <div class="chain-label">9. AI 生成技能</div>
+                        <div class="chain-text">${escHtml(det.new_skill_name)}</div>
+                    </div>`;
+                }
+
+                // 10. 错误
+                if (d.error) {
+                    steps += `<div class="chain-step step-error">
+                        <div class="chain-label">错误</div>
+                        <div class="chain-text">${escHtml(d.error)}</div>
+                    </div>`;
+                }
+                if (det.error_context) {
+                    steps += `<div class="chain-step step-warn">
+                        <div class="chain-label">错误反思注入</div>
+                        <div class="chain-text">${escHtml(det.error_context)}</div>
+                    </div>`;
+                }
+
+                body.innerHTML = `<div class="modal-grid">
+                    <div>${screenshotSrc ? `<img class="modal-screenshot" src="${screenshotSrc}" alt="全尺寸截图">` : '<div style="color:var(--text-tertiary)">无截图</div>'}</div>
+                    <div class="modal-timeline">${steps}</div>
+                </div>`;
+            } catch (e) {
+                body.innerHTML = `<div class="chain-step step-error"><div class="chain-text">请求失败: ${e.message}</div></div>`;
+            }
+        }
+
+        function closeDecisionDetail() {
+            document.getElementById('decision-modal').classList.remove('active');
+        }
+
+        function escHtml(s) {
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
         }
 
         // ── 初始化 ──
