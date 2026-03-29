@@ -21,7 +21,7 @@ from ..config_manager import apply_api_keys, load_config
 from ..input_controller import InputController
 from ..local_analyzer import LocalAnalyzer
 from ..memory import LongTermMemory, ShortTermMemory
-from ..models import ActionType, GameConfig, GameSession, SessionStatus
+from ..models import ActionType
 from ..models_advanced import AdvancedConfig, ExperienceEntry
 from ..reflection import ReflectionEngine
 from ..skill_manager import SkillManager

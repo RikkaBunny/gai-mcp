@@ -7,13 +7,12 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Optional
 
 import numpy as np
 from PIL import Image
-
-import json
 
 from .models import ActionType, GameAction
 from .models_advanced import ReflectionResult

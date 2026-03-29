@@ -7,7 +7,7 @@ import os
 
 import anthropic
 
-from .base import AIEngine, SYSTEM_PROMPT
+from .base import AIEngine
 
 logger = logging.getLogger(__name__)
 
